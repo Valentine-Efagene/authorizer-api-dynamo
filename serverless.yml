@@ -1,0 +1,67 @@
+service: authorizer-api-dynamo
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  httpApi:
+    cors: true
+  environment:
+    NODE_ENV: ${self:provider.stage}
+    STAGE: ${self:provider.stage}
+    PERMISSIONS_TABLE: ${self:service}-${self:provider.stage}-permissions
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Scan
+          Resource:
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:provider.environment.PERMISSIONS_TABLE}
+
+functions:
+  api:
+    handler: dist/lambda.handler
+    timeout: 30
+    memorySize: 256
+    events:
+      - httpApi:
+          path: /health
+          method: GET
+      - httpApi:
+          path: /openapi.json
+          method: GET
+      - httpApi:
+          path: /api-docs
+          method: GET
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
+
+plugins:
+  - serverless-offline
+
+package:
+  patterns:
+    - dist/**
+
+resources:
+  Resources:
+    PermissionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.PERMISSIONS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
