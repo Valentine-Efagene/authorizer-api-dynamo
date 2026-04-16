@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import request from 'supertest';
 import { app } from '../app';
 
@@ -26,5 +27,25 @@ describe('app endpoints', () => {
     expect(response.text).toContain('SwaggerUIBundle');
     expect(response.text).toContain('swagger-ui');
     expect(response.text).toContain('https://unpkg.com/swagger-ui-dist@5/swagger-ui.css');
+  });
+
+  it('loads the local dotenv values before resolving the DynamoDB table name', () => {
+    const script = `
+      import express from 'express';
+      express.application.listen = function (_port, cb) {
+        if (cb) cb();
+        return { close() {} };
+      };
+      await import('./src/local.ts');
+      const mod = await import('./src/lib/dynamodb.ts');
+      console.log(mod.permissionsTableName);
+    `;
+
+    const output = execFileSync('node', ['--import', 'tsx', '--eval', script], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    }).trim();
+
+    expect(output).toContain('RolePolicies');
   });
 });

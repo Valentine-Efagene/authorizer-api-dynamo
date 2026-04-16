@@ -1,7 +1,6 @@
 import { config } from 'dotenv';
-import { app } from './app';
-
 config();
+import { app } from './app';
 
 const port = Number(process.env.PORT ?? 3001);
 
