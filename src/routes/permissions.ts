@@ -3,17 +3,20 @@ import { z } from 'zod';
 import { permissionService } from '../services/permission.service';
 import {
     createPermissionSchema,
+    roleNameSchema,
     updatePermissionSchema,
 } from '../validators/permission.validator';
 
 export const permissionRouter = Router();
 
-const idSchema = z.coerce.number().int().positive();
+const roleNameParamSchema = roleNameSchema;
 
 permissionRouter.get('/', async (req, res, next) => {
     try {
         const roleName =
-            typeof req.query.roleName === 'string' ? req.query.roleName : undefined;
+            typeof req.query.roleName === 'string'
+                ? roleNameSchema.parse(req.query.roleName)
+                : undefined;
 
         const isActive =
             typeof req.query.isActive === 'string'
@@ -37,42 +40,42 @@ permissionRouter.post('/', async (req, res, next) => {
     }
 });
 
-permissionRouter.get('/:id', async (req, res, next) => {
+permissionRouter.get('/:roleName', async (req, res, next) => {
     try {
-        const id = idSchema.parse(req.params.id);
-        const permission = await permissionService.findById(id);
+        const roleName = roleNameSchema.parse(req.params.roleName);
+        const permission = await permissionService.findByRoleName(roleName);
         res.json({ success: true, data: permission });
     } catch (error) {
         next(error);
     }
 });
 
-permissionRouter.put('/:id', async (req, res, next) => {
+permissionRouter.put('/:roleName', async (req, res, next) => {
     try {
-        const id = idSchema.parse(req.params.id);
+        const roleName = roleNameSchema.parse(req.params.roleName);
         const input = updatePermissionSchema.parse(req.body);
-        const permission = await permissionService.update(id, input);
+        const permission = await permissionService.updateByRoleName(roleName, input);
         res.json({ success: true, data: permission });
     } catch (error) {
         next(error);
     }
 });
 
-permissionRouter.patch('/:id', async (req, res, next) => {
+permissionRouter.patch('/:roleName', async (req, res, next) => {
     try {
-        const id = idSchema.parse(req.params.id);
+        const roleName = roleNameSchema.parse(req.params.roleName);
         const input = updatePermissionSchema.parse(req.body);
-        const permission = await permissionService.update(id, input);
+        const permission = await permissionService.updateByRoleName(roleName, input);
         res.json({ success: true, data: permission });
     } catch (error) {
         next(error);
     }
 });
 
-permissionRouter.delete('/:id', async (req, res, next) => {
+permissionRouter.delete('/:roleName', async (req, res, next) => {
     try {
-        const id = idSchema.parse(req.params.id);
-        const result = await permissionService.delete(id);
+        const roleName = roleNameSchema.parse(req.params.roleName);
+        const result = await permissionService.deleteByRoleName(roleName);
         res.json({ success: true, data: result });
     } catch (error) {
         next(error);

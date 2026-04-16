@@ -1,8 +1,4 @@
-import {
-    DeleteCommand,
-    PutCommand,
-    ScanCommand,
-} from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, GetCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { AppError } from '../middleware/error-handler';
 import { dynamodb, permissionsTableName } from '../lib/dynamodb';
 import {
@@ -25,19 +21,18 @@ class PermissionService {
 
         if (filters?.roleName) {
             const query = filters.roleName.toLowerCase();
-            items = items.filter((item) => item.roleName.toLowerCase().includes(query));
+            items = items.filter((item) => item.roleName.toLowerCase() === query);
         }
 
         if (typeof filters?.isActive === 'boolean') {
             items = items.filter((item) => item.isActive === filters.isActive);
         }
 
-        return items.sort((a, b) => a.id - b.id);
+        return items.sort((a, b) => a.roleName.localeCompare(b.roleName));
     }
 
-    async findById(id: number) {
-        const items = await this.findAll();
-        const permission = items.find((item) => item.id === id);
+    async findByRoleName(roleName: string) {
+        const permission = await this.findByRoleNameExact(roleName);
 
         if (!permission) {
             throw new AppError(404, 'Permission not found');
@@ -68,16 +63,15 @@ class PermissionService {
             new PutCommand({
                 TableName: permissionsTableName,
                 Item: item,
-                ConditionExpression:
-                    'attribute_not_exists(id) AND attribute_not_exists(roleName)',
+                ConditionExpression: 'attribute_not_exists(roleName)',
             })
         );
 
         return item;
     }
 
-    async update(id: number, input: UpdatePermissionInput) {
-        const existing = await this.findById(id);
+    async updateByRoleName(roleName: string, input: UpdatePermissionInput) {
+        const existing = await this.findByRoleName(roleName);
 
         if (
             input.roleName &&
@@ -103,44 +97,47 @@ class PermissionService {
         );
 
         if (updated.roleName !== existing.roleName) {
-            await this.deleteByStoredKey(existing);
+            await this.deleteByRoleNameStored(existing.roleName);
         }
 
         return updated;
     }
 
-    async delete(id: number) {
-        const existing = await this.findById(id);
-        await this.deleteByStoredKey(existing);
-        return { id };
+    async deleteByRoleName(roleName: string) {
+        const existing = await this.findByRoleName(roleName);
+        await this.deleteByRoleNameStored(existing.roleName);
+        return { roleName: existing.roleName };
     }
 
     private async findByRoleNameExact(roleName: string) {
-        const items = await this.findAll();
-        return items.find(
-            (item) => item.roleName.toLowerCase() === roleName.toLowerCase()
-        );
-    }
+        const normalizedRoleName = roleName.trim();
 
-    private async deleteByStoredKey(permission: Permission) {
         try {
-            await dynamodb.send(
-                new DeleteCommand({
+            const result = await dynamodb.send(
+                new GetCommand({
                     TableName: permissionsTableName,
-                    Key: { id: permission.id },
+                    Key: { roleName: normalizedRoleName },
                 })
             );
-            return;
+
+            return result.Item ? permissionSchema.parse(result.Item) : undefined;
         } catch (error) {
             if (!this.isKeySchemaMismatch(error)) {
                 throw error;
             }
         }
 
+        const items = await this.findAll();
+        return items.find(
+            (item) => item.roleName.toLowerCase() === normalizedRoleName.toLowerCase()
+        );
+    }
+
+    private async deleteByRoleNameStored(roleName: string) {
         await dynamodb.send(
             new DeleteCommand({
                 TableName: permissionsTableName,
-                Key: { roleName: permission.roleName },
+                Key: { roleName },
             })
         );
     }

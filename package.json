@@ -6,7 +6,7 @@
     "description": "Permissions CRUD API using Express, Zod, Swagger, TypeScript, esbuild, Serverless, and DynamoDB",
     "scripts": {
         "dev": "tsx watch src/local.ts",
-        "start:dev": "tsx src/local.ts",
+        "start:dev": "tsx watch src/local.ts",
         "build": "tsc && node esbuild.config.js",
         "test": "node --experimental-vm-modules --no-warnings=ExperimentalWarning node_modules/jest/bin/jest.js --runInBand",
         "deploy": "npm run build && npx serverless deploy",

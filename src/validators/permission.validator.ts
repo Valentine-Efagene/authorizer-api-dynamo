@@ -3,6 +3,19 @@ import { z } from 'zod';
 
 extendZodWithOpenApi(z);
 
+export enum RoleName {
+    User = 'user',
+    Admin = 'admin',
+    Sales = 'sales',
+    Support = 'support',
+    Finance = 'finance',
+    Legal = 'legal',
+    ProjectManager = 'project_manager',
+    MortgageOperator = 'mortgage_operator',
+}
+
+export const roleNameSchema = z.nativeEnum(RoleName);
+
 export const httpMethodSchema = z.enum([
     'GET',
     'POST',
@@ -31,7 +44,7 @@ export const policySchema = z.object({
 
 export const permissionSchema = z.object({
     id: z.number().int().positive(),
-    roleName: z.string().trim().min(1),
+    roleName: roleNameSchema,
     isActive: z.boolean(),
     policy: policySchema,
     createdAt: z.string().datetime(),
@@ -39,14 +52,14 @@ export const permissionSchema = z.object({
 });
 
 export const createPermissionSchema = z.object({
-    roleName: z.string().trim().min(1),
+    roleName: roleNameSchema,
     isActive: z.boolean().default(true),
     policy: policySchema,
 });
 
 export const updatePermissionSchema = z
     .object({
-        roleName: z.string().trim().min(1).optional(),
+        roleName: roleNameSchema.optional(),
         isActive: z.boolean().optional(),
         policy: policySchema.optional(),
     })

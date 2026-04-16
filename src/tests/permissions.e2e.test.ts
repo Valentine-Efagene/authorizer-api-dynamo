@@ -1,24 +1,54 @@
 import request from 'supertest';
 import { app } from '../app';
-import type { CreatePermissionInput } from '../validators/permission.validator';
+import { RoleName, type CreatePermissionInput, type Permission } from '../validators/permission.validator';
+
+const allowedRoleNames = [
+    RoleName.User,
+    RoleName.Admin,
+    RoleName.Sales,
+    RoleName.Support,
+    RoleName.Finance,
+    RoleName.Legal,
+    RoleName.ProjectManager,
+    RoleName.MortgageOperator,
+] as const;
 
 describe('permissions true e2e CRUD', () => {
+    let createdRoleName: string | undefined;
     let createdId: number | undefined;
     const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     afterAll(async () => {
-        if (!createdId) {
+        if (!createdRoleName) {
             return;
         }
 
-        await request(app).delete(`/permissions/${createdId}`);
+        await request(app).delete(`/permissions/${encodeURIComponent(createdRoleName)}`);
     }, 30000);
 
     it(
         'creates, lists, gets, updates, patches, and deletes a permission with no mocks',
         async () => {
+            const existingResponse = await request(app)
+                .get('/permissions')
+                .set('accept', 'application/json');
+
+            expect(existingResponse.status).toBe(200);
+            expect(existingResponse.body.success).toBe(true);
+
+            const existingRoleNames = new Set(
+                (existingResponse.body.data as Permission[]).map((item) => item.roleName)
+            );
+            const availableRoleNames = allowedRoleNames.filter(
+                (roleName) => !existingRoleNames.has(roleName)
+            );
+
+            expect(availableRoleNames.length).toBeGreaterThanOrEqual(2);
+
+            const [initialRoleName, updatedRoleName] = availableRoleNames;
+
             const createPayload: CreatePermissionInput = {
-                roleName: `e2e-role-${uniqueSuffix}`,
+                roleName: initialRoleName,
                 isActive: true,
                 policy: {
                     version: '1.0',
@@ -47,8 +77,10 @@ describe('permissions true e2e CRUD', () => {
             expect(createResponse.body.data.isActive).toBe(true);
 
             createdId = createResponse.body.data.id;
+            createdRoleName = createResponse.body.data.roleName;
 
             expect(typeof createdId).toBe('number');
+            expect(createdRoleName).toBe(createPayload.roleName);
 
             const listResponse = await request(app)
                 .get('/permissions')
@@ -65,7 +97,7 @@ describe('permissions true e2e CRUD', () => {
             ).toBe(true);
 
             const getResponse = await request(app)
-                .get(`/permissions/${createdId}`)
+                .get(`/permissions/${encodeURIComponent(createdRoleName!)}`)
                 .set('accept', 'application/json');
 
             expect(getResponse.status).toBe(200);
@@ -74,7 +106,7 @@ describe('permissions true e2e CRUD', () => {
             expect(getResponse.body.data.roleName).toBe(createPayload.roleName);
 
             const putPayload = {
-                roleName: `e2e-role-updated-${uniqueSuffix}`,
+                roleName: updatedRoleName,
                 isActive: false,
                 policy: {
                     version: '1.0',
@@ -93,7 +125,7 @@ describe('permissions true e2e CRUD', () => {
             } as const;
 
             const putResponse = await request(app)
-                .put(`/permissions/${createdId}`)
+                .put(`/permissions/${encodeURIComponent(createdRoleName!)}`)
                 .set('accept', 'application/json')
                 .send(putPayload);
 
@@ -102,9 +134,10 @@ describe('permissions true e2e CRUD', () => {
             expect(putResponse.body.data.roleName).toBe(putPayload.roleName);
             expect(putResponse.body.data.isActive).toBe(false);
             expect(putResponse.body.data.policy.statements[0].effect).toBe('Deny');
+            createdRoleName = putPayload.roleName;
 
             const patchResponse = await request(app)
-                .patch(`/permissions/${createdId}`)
+                .patch(`/permissions/${encodeURIComponent(createdRoleName)}`)
                 .set('accept', 'application/json')
                 .send({ isActive: true });
 
@@ -114,18 +147,18 @@ describe('permissions true e2e CRUD', () => {
             expect(patchResponse.body.data.isActive).toBe(true);
 
             const deleteResponse = await request(app)
-                .delete(`/permissions/${createdId}`)
+                .delete(`/permissions/${encodeURIComponent(createdRoleName)}`)
                 .set('accept', 'application/json');
 
             expect(deleteResponse.status).toBe(200);
             expect(deleteResponse.body.success).toBe(true);
-            expect(deleteResponse.body.data.id).toBe(createdId);
+            expect(deleteResponse.body.data.roleName).toBe(createdRoleName);
 
-            const deletedId = createdId;
-            createdId = undefined;
+            const deletedRoleName = createdRoleName;
+            createdRoleName = undefined;
 
             const notFoundResponse = await request(app)
-                .get(`/permissions/${deletedId}`)
+                .get(`/permissions/${encodeURIComponent(deletedRoleName!)}`)
                 .set('accept', 'application/json');
 
             expect(notFoundResponse.status).toBe(404);

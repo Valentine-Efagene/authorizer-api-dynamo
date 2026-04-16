@@ -1,8 +1,8 @@
-import { createPermissionSchema, updatePermissionSchema } from '../validators/permission.validator';
+import { RoleName, createPermissionSchema, updatePermissionSchema } from '../validators/permission.validator';
 
 describe('permission policy validation', () => {
     const validPayload = {
-        roleName: 'admin',
+        roleName: RoleName.Admin,
         isActive: true,
         policy: {
             version: '1.0',
@@ -53,6 +53,15 @@ describe('permission policy validation', () => {
                         },
                     ],
                 },
+            })
+        ).toThrow();
+    });
+
+    it('rejects an invalid roleName', () => {
+        expect(() =>
+            createPermissionSchema.parse({
+                ...validPayload,
+                roleName: 'editor',
             })
         ).toThrow();
     });

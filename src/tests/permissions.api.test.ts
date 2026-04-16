@@ -3,11 +3,11 @@ import request from 'supertest';
 import { AppError } from '../middleware/error-handler';
 import { app } from '../app';
 import { permissionService } from '../services/permission.service';
-import type { CreatePermissionInput, Permission } from '../validators/permission.validator';
+import { RoleName, type CreatePermissionInput, type Permission } from '../validators/permission.validator';
 
 const basePermission: Permission = {
     id: 101,
-    roleName: 'admin',
+    roleName: RoleName.Admin,
     isActive: true,
     policy: {
         version: '1.0',
@@ -51,7 +51,7 @@ describe('permissions api CRUD', () => {
 
     it('creates a permission', async () => {
         const createPayload: CreatePermissionInput = {
-            roleName: 'editor',
+            roleName: RoleName.Support,
             isActive: true,
             policy: {
                 version: '1.0' as const,
@@ -72,7 +72,7 @@ describe('permissions api CRUD', () => {
         jest.spyOn(permissionService, 'create').mockResolvedValue({
             ...basePermission,
             id: 102,
-            roleName: 'editor',
+            roleName: RoleName.Support,
             policy: createPayload.policy,
         });
 
@@ -83,14 +83,14 @@ describe('permissions api CRUD', () => {
 
         expect(response.status).toBe(201);
         expect(response.body.success).toBe(true);
-        expect(response.body.data.roleName).toBe('editor');
+        expect(response.body.data.roleName).toBe(RoleName.Support);
         expect(response.body.data.policy.statements[0].resources[0].path).toBe('/articles');
     });
 
-    it('gets a permission by id', async () => {
-        jest.spyOn(permissionService, 'findById').mockResolvedValue(basePermission);
+    it('gets a permission by roleName', async () => {
+        jest.spyOn(permissionService, 'findByRoleName').mockResolvedValue(basePermission);
 
-        const response = await request(app).get('/permissions/101');
+        const response = await request(app).get('/permissions/admin');
 
         expect(response.status).toBe(200);
         expect(response.body).toEqual({
@@ -102,15 +102,15 @@ describe('permissions api CRUD', () => {
     it('updates a permission with put', async () => {
         const updatedPermission: Permission = {
             ...basePermission,
-            roleName: 'super-admin',
+            roleName: RoleName.Finance,
             updatedAt: '2026-04-16T01:00:00.000Z',
         };
 
-        jest.spyOn(permissionService, 'update').mockResolvedValue(updatedPermission);
+        jest.spyOn(permissionService, 'updateByRoleName').mockResolvedValue(updatedPermission);
 
         const response = await request(app)
-            .put('/permissions/101')
-            .send({ roleName: 'super-admin' });
+            .put('/permissions/admin')
+            .send({ roleName: RoleName.Finance });
 
         expect(response.status).toBe(200);
         expect(response.body).toEqual({
@@ -126,10 +126,10 @@ describe('permissions api CRUD', () => {
             updatedAt: '2026-04-16T02:00:00.000Z',
         };
 
-        jest.spyOn(permissionService, 'update').mockResolvedValue(updatedPermission);
+        jest.spyOn(permissionService, 'updateByRoleName').mockResolvedValue(updatedPermission);
 
         const response = await request(app)
-            .patch('/permissions/101')
+            .patch('/permissions/admin')
             .send({ isActive: false });
 
         expect(response.status).toBe(200);
@@ -140,23 +140,23 @@ describe('permissions api CRUD', () => {
     });
 
     it('deletes a permission', async () => {
-        jest.spyOn(permissionService, 'delete').mockResolvedValue({ id: 101 });
+        jest.spyOn(permissionService, 'deleteByRoleName').mockResolvedValue({ roleName: RoleName.Admin });
 
-        const response = await request(app).delete('/permissions/101');
+        const response = await request(app).delete('/permissions/admin');
 
         expect(response.status).toBe(200);
         expect(response.body).toEqual({
             success: true,
-            data: { id: 101 },
+            data: { roleName: 'admin' },
         });
     });
 
     it('returns a not found error for a missing permission', async () => {
         jest
-            .spyOn(permissionService, 'findById')
+            .spyOn(permissionService, 'findByRoleName')
             .mockRejectedValue(new AppError(404, 'Permission not found'));
 
-        const response = await request(app).get('/permissions/999');
+        const response = await request(app).get('/permissions/legal');
 
         expect(response.status).toBe(404);
         expect(response.body).toEqual({
@@ -165,5 +165,26 @@ describe('permissions api CRUD', () => {
                 message: 'Permission not found',
             },
         });
+    });
+    it('rejects an invalid roleName payload', async () => {
+        const response = await request(app)
+            .post('/permissions')
+            .send({
+                roleName: 'editor',
+                isActive: true,
+                policy: {
+                    version: '1.0',
+                    statements: [
+                        {
+                            effect: 'Allow',
+                            resources: [{ path: '/articles', methods: ['GET'] }],
+                        },
+                    ],
+                },
+            });
+
+        expect(response.status).toBe(400);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error.message).toBe('Validation Error');
     });
 });

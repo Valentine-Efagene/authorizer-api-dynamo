@@ -7,6 +7,7 @@ import { z } from 'zod';
 import {
     createPermissionSchema,
     permissionSchema,
+    roleNameSchema,
     updatePermissionSchema,
 } from '../validators/permission.validator';
 
@@ -93,11 +94,11 @@ registry.registerPath({
 
 registry.registerPath({
     method: 'get',
-    path: '/permissions/{id}',
+    path: '/permissions/{roleName}',
     tags: ['Permissions'],
-    summary: 'Get one permission by id',
+    summary: 'Get one permission by roleName',
     request: {
-        params: z.object({ id: z.coerce.number().int().positive() }),
+        params: z.object({ roleName: roleNameSchema }),
     },
     responses: {
         200: {
@@ -121,11 +122,38 @@ registry.registerPath({
 
 registry.registerPath({
     method: 'put',
-    path: '/permissions/{id}',
+    path: '/permissions/{roleName}',
     tags: ['Permissions'],
-    summary: 'Update one permission by id',
+    summary: 'Update one permission by roleName',
     request: {
-        params: z.object({ id: z.coerce.number().int().positive() }),
+        params: z.object({ roleName: roleNameSchema }),
+        body: {
+            content: {
+                'application/json': {
+                    schema: updatePermissionSchema,
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Permission updated',
+            content: {
+                'application/json': {
+                    schema: successEnvelope(permissionSchema),
+                },
+            },
+        },
+    },
+});
+
+registry.registerPath({
+    method: 'patch',
+    path: '/permissions/{roleName}',
+    tags: ['Permissions'],
+    summary: 'Partially update one permission by roleName',
+    request: {
+        params: z.object({ roleName: roleNameSchema }),
         body: {
             content: {
                 'application/json': {
@@ -148,18 +176,18 @@ registry.registerPath({
 
 registry.registerPath({
     method: 'delete',
-    path: '/permissions/{id}',
+    path: '/permissions/{roleName}',
     tags: ['Permissions'],
-    summary: 'Delete one permission by id',
+    summary: 'Delete one permission by roleName',
     request: {
-        params: z.object({ id: z.coerce.number().int().positive() }),
+        params: z.object({ roleName: roleNameSchema }),
     },
     responses: {
         200: {
             description: 'Permission deleted',
             content: {
                 'application/json': {
-                    schema: successEnvelope(z.object({ id: z.number() })),
+                    schema: successEnvelope(z.object({ roleName: z.string() })),
                 },
             },
         },

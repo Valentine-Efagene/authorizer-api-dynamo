@@ -19,10 +19,10 @@ A lightweight CRUD API for permission policies stored in DynamoDB.
 - GET /api-docs
 - GET /permissions
 - POST /permissions
-- GET /permissions/:id
-- PUT /permissions/:id
-- PATCH /permissions/:id
-- DELETE /permissions/:id
+- GET /permissions/:roleName
+- PUT /permissions/:roleName
+- PATCH /permissions/:roleName
+- DELETE /permissions/:roleName
 
 ## Sample payload
 
