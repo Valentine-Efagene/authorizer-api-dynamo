@@ -2,17 +2,21 @@ service: authorizer-api-dynamo
 
 frameworkVersion: '4'
 
+custom:
+  permissionsTableName: ${env:PERMISSIONS_TABLE, 'RolePolicies'}
+  permissionsTableArn: ${env:PERMISSIONS_TABLE_ARN, 'arn:aws:dynamodb:us-east-1:898751738669:table/RolePolicies'}
+
 provider:
   name: aws
   runtime: nodejs20.x
-  region: us-east-1
+  region: ${env:AWS_REGION, 'us-east-1'}
   stage: ${opt:stage, 'dev'}
   httpApi:
     cors: true
   environment:
     NODE_ENV: ${self:provider.stage}
     STAGE: ${self:provider.stage}
-    PERMISSIONS_TABLE: ${self:service}-${self:provider.stage}-permissions
+    PERMISSIONS_TABLE: ${self:custom.permissionsTableName}
   iam:
     role:
       statements:
@@ -24,7 +28,7 @@ provider:
             - dynamodb:DeleteItem
             - dynamodb:Scan
           Resource:
-            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:provider.environment.PERMISSIONS_TABLE}
+            - ${self:custom.permissionsTableArn}
 
 functions:
   api:
@@ -51,17 +55,3 @@ plugins:
 package:
   patterns:
     - dist/**
-
-resources:
-  Resources:
-    PermissionsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:provider.environment.PERMISSIONS_TABLE}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: N
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH

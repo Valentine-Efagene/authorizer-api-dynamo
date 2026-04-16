@@ -16,7 +16,7 @@ const commonOptions = {
 await esbuild.build({
     ...commonOptions,
     entryPoints: ['src/lambda.ts'],
-    outfile: 'dist/lambda.mjs',
+    outfile: 'dist/lambda.js',
 });
 
 console.log('Build complete');

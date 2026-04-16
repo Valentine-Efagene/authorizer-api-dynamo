@@ -17,4 +17,14 @@ describe('app endpoints', () => {
     expect(response.body.info.title).toBe('Permissions API');
     expect(response.body.paths['/permissions']).toBeDefined();
   });
+
+  it('serves the Swagger UI page', async () => {
+    const response = await request(app).get('/api-docs');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.text).toContain('SwaggerUIBundle');
+    expect(response.text).toContain('swagger-ui');
+    expect(response.text).toContain('https://unpkg.com/swagger-ui-dist@5/swagger-ui.css');
+  });
 });
