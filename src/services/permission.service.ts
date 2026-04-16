@@ -1,6 +1,5 @@
 import {
     DeleteCommand,
-    GetCommand,
     PutCommand,
     ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
@@ -37,18 +36,14 @@ class PermissionService {
     }
 
     async findById(id: number) {
-        const result = await dynamodb.send(
-            new GetCommand({
-                TableName: permissionsTableName,
-                Key: { id },
-            })
-        );
+        const items = await this.findAll();
+        const permission = items.find((item) => item.id === id);
 
-        if (!result.Item) {
+        if (!permission) {
             throw new AppError(404, 'Permission not found');
         }
 
-        return permissionSchema.parse(result.Item);
+        return permission;
     }
 
     async create(input: CreatePermissionInput) {
@@ -73,7 +68,8 @@ class PermissionService {
             new PutCommand({
                 TableName: permissionsTableName,
                 Item: item,
-                ConditionExpression: 'attribute_not_exists(id)',
+                ConditionExpression:
+                    'attribute_not_exists(id) AND attribute_not_exists(roleName)',
             })
         );
 
@@ -106,19 +102,16 @@ class PermissionService {
             })
         );
 
+        if (updated.roleName !== existing.roleName) {
+            await this.deleteByStoredKey(existing);
+        }
+
         return updated;
     }
 
     async delete(id: number) {
-        await this.findById(id);
-
-        await dynamodb.send(
-            new DeleteCommand({
-                TableName: permissionsTableName,
-                Key: { id },
-            })
-        );
-
+        const existing = await this.findById(id);
+        await this.deleteByStoredKey(existing);
         return { id };
     }
 
@@ -126,6 +119,38 @@ class PermissionService {
         const items = await this.findAll();
         return items.find(
             (item) => item.roleName.toLowerCase() === roleName.toLowerCase()
+        );
+    }
+
+    private async deleteByStoredKey(permission: Permission) {
+        try {
+            await dynamodb.send(
+                new DeleteCommand({
+                    TableName: permissionsTableName,
+                    Key: { id: permission.id },
+                })
+            );
+            return;
+        } catch (error) {
+            if (!this.isKeySchemaMismatch(error)) {
+                throw error;
+            }
+        }
+
+        await dynamodb.send(
+            new DeleteCommand({
+                TableName: permissionsTableName,
+                Key: { roleName: permission.roleName },
+            })
+        );
+    }
+
+    private isKeySchemaMismatch(error: unknown) {
+        return (
+            typeof error === 'object' &&
+            error !== null &&
+            '__type' in error &&
+            String(error.__type).includes('ValidationException')
         );
     }
 }
