@@ -59,7 +59,6 @@ export const createPermissionSchema = z.object({
 
 export const updatePermissionSchema = z
     .object({
-        roleName: roleNameSchema.optional(),
         isActive: z.boolean().optional(),
         policy: policySchema.optional(),
     })

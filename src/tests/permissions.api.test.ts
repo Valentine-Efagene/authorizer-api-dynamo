@@ -102,7 +102,7 @@ describe('permissions api CRUD', () => {
     it('updates a permission with put', async () => {
         const updatedPermission: Permission = {
             ...basePermission,
-            roleName: RoleName.Finance,
+            isActive: false,
             updatedAt: '2026-04-16T01:00:00.000Z',
         };
 
@@ -110,7 +110,7 @@ describe('permissions api CRUD', () => {
 
         const response = await request(app)
             .put('/permissions/admin')
-            .send({ roleName: RoleName.Finance });
+            .send({ isActive: false, policy: basePermission.policy });
 
         expect(response.status).toBe(200);
         expect(response.body).toEqual({
@@ -182,6 +182,16 @@ describe('permissions api CRUD', () => {
                     ],
                 },
             });
+
+        expect(response.status).toBe(400);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error.message).toBe('Validation Error');
+    });
+
+    it('rejects roleName in update payloads', async () => {
+        const response = await request(app)
+            .patch('/permissions/admin')
+            .send({ roleName: RoleName.Support });
 
         expect(response.status).toBe(400);
         expect(response.body.success).toBe(false);

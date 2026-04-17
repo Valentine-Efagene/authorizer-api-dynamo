@@ -43,9 +43,9 @@ describe('permissions true e2e CRUD', () => {
                 (roleName) => !existingRoleNames.has(roleName)
             );
 
-            expect(availableRoleNames.length).toBeGreaterThanOrEqual(2);
+            expect(availableRoleNames.length).toBeGreaterThanOrEqual(1);
 
-            const [initialRoleName, updatedRoleName] = availableRoleNames;
+            const [initialRoleName] = availableRoleNames;
 
             const createPayload: CreatePermissionInput = {
                 roleName: initialRoleName,
@@ -106,7 +106,6 @@ describe('permissions true e2e CRUD', () => {
             expect(getResponse.body.data.roleName).toBe(createPayload.roleName);
 
             const putPayload = {
-                roleName: updatedRoleName,
                 isActive: false,
                 policy: {
                     version: '1.0',
@@ -131,13 +130,12 @@ describe('permissions true e2e CRUD', () => {
 
             expect(putResponse.status).toBe(200);
             expect(putResponse.body.success).toBe(true);
-            expect(putResponse.body.data.roleName).toBe(putPayload.roleName);
+            expect(putResponse.body.data.roleName).toBe(createdRoleName);
             expect(putResponse.body.data.isActive).toBe(false);
             expect(putResponse.body.data.policy.statements[0].effect).toBe('Deny');
-            createdRoleName = putPayload.roleName;
 
             const patchResponse = await request(app)
-                .patch(`/permissions/${encodeURIComponent(createdRoleName)}`)
+                .patch(`/permissions/${encodeURIComponent(createdRoleName!)}`)
                 .set('accept', 'application/json')
                 .send({ isActive: true });
 
@@ -147,7 +145,7 @@ describe('permissions true e2e CRUD', () => {
             expect(patchResponse.body.data.isActive).toBe(true);
 
             const deleteResponse = await request(app)
-                .delete(`/permissions/${encodeURIComponent(createdRoleName)}`)
+                .delete(`/permissions/${encodeURIComponent(createdRoleName!)}`)
                 .set('accept', 'application/json');
 
             expect(deleteResponse.status).toBe(200);

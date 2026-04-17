@@ -17,7 +17,10 @@ class PermissionService {
             })
         );
 
-        let items = (result.Items ?? []).map((item) => permissionSchema.parse(item));
+        let items = (result.Items ?? [])
+            .map((item) => permissionSchema.safeParse(item))
+            .filter((result): result is { success: true; data: Permission } => result.success)
+            .map((result) => result.data);
 
         if (filters?.roleName) {
             const query = filters.roleName.toLowerCase();
@@ -73,16 +76,6 @@ class PermissionService {
     async updateByRoleName(roleName: string, input: UpdatePermissionInput) {
         const existing = await this.findByRoleName(roleName);
 
-        if (
-            input.roleName &&
-            input.roleName.toLowerCase() !== existing.roleName.toLowerCase()
-        ) {
-            const duplicate = await this.findByRoleNameExact(input.roleName);
-            if (duplicate) {
-                throw new AppError(409, 'A permission with this roleName already exists');
-            }
-        }
-
         const updated: Permission = permissionSchema.parse({
             ...existing,
             ...input,
@@ -95,10 +88,6 @@ class PermissionService {
                 Item: updated,
             })
         );
-
-        if (updated.roleName !== existing.roleName) {
-            await this.deleteByRoleNameStored(existing.roleName);
-        }
 
         return updated;
     }
